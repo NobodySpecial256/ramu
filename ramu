@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+from subprocess import run
+from copy import deepcopy
+from string import printable
+
+"""
+               total        used        free      shared  buff/cache   available
+Mem:         1051608      244748      346172        2576      460688      648784
+Swap:        1048572         512     1048060
+
+"""
+
+units = ["KiB", "MiB", "GiB", "TiB", "PiB", "EiB"]
+
+def clean_str(string):
+	ret = ""
+	for char in string:
+		if char in printable:
+			ret += char
+	return ret
+
+def format_bytes(n_bytes):
+	n_bytes = float(n_bytes)
+	ix = 0
+	while n_bytes > 1024.0:
+		n_bytes /= 1024
+		ix += 1
+	return "%.2f %s" % (n_bytes, units[ix])
+
+def split(string, delimeter):
+	ret = []
+	for seg in string.split(delimeter):
+		if seg != "":
+			ret += [seg]
+	return ret
+
+def main():
+	running_qubes_lines = run(["/usr/bin/qvm-ls", "--running"], capture_output=True).stdout.decode().split("\n")[1:]
+	running_qubes = []
+	for line in running_qubes_lines:
+		running_qubes += [line.split(" ")[0]]
+	mem = {"ram": {"total": 0, "used": 0, "free": 0}, "swap": {"total": 0, "used": 0, "free": 0}}
+#	print(running_qubes)
+#	print("INDIVIDUAL QUBES")
+	for qube in running_qubes:
+		if qube in ["dom0", ""]:
+			continue
+		qube_free = run(["/usr/bin/qvm-run", "--pass-io", qube, "free"], capture_output=True).stdout.decode().split("\n")
+		qube_free_h = run(["/usr/bin/qvm-run", "--pass-io", qube, "free -h"], capture_output=True).stdout.decode()
+		qube_ram = split(qube_free[1], " ")
+		qube_swap = split(qube_free[2], " ")
+
+		mem["ram"]["total"] += int(qube_ram[1])
+		mem["ram"]["used"] += int(qube_ram[2])
+		mem["ram"]["free"] += int(qube_ram[3])
+
+		mem["swap"]["total"] += int(qube_swap[1])
+		mem["swap"]["used"] += int(qube_swap[2])
+		mem["swap"]["free"] += int(qube_swap[3])
+
+		print(qube)
+		print(clean_str(qube_free_h))
+	mem_h = deepcopy(mem)
+	for ix_a in mem_h:
+		for ix_b in mem_h[ix_a]:
+			mem_h[ix_a][ix_b] = format_bytes(mem_h[ix_a][ix_b])
+	# Note that the free RAM reporting is based on the amount of RAM currently allocated to running qubes,
+	# not the amount of RAM actually available to the system
+	print("ALL RUNNING QUBES")
+	print("\ttotal\t\tused\t\tfree")
+	print("Mem:\t%s\t%s\t%s" %(mem_h["ram"]["total"], mem_h["ram"]["used"], mem_h["ram"]["free"]))
+	print("Swap:\t%s\t%s\t%s" %(mem_h["swap"]["total"], mem_h["swap"]["used"], mem_h["swap"]["free"]))
+main()
