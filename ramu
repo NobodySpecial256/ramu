@@ -35,7 +35,7 @@ def split(string, delimeter):
 	return ret
 
 def main():
-	running_qubes_lines = run(["/usr/bin/qvm-ls", "--running"], capture_output=True).stdout.decode().split("\n")[1:]
+	running_qubes_lines = run(["/usr/bin/qvm-ls", "--running"], capture_output=True).stdout.decode(encoding="ascii", errors="replace").split("\n")[1:]
 	running_qubes = []
 	for line in running_qubes_lines:
 		running_qubes += [line.split(" ")[0]]
@@ -45,8 +45,8 @@ def main():
 	for qube in running_qubes:
 		if qube in ["dom0", ""]:
 			continue
-		qube_free = run(["/usr/bin/qvm-run", "--pass-io", qube, "free"], capture_output=True).stdout.decode().split("\n")
-		qube_free_h = run(["/usr/bin/qvm-run", "--pass-io", qube, "free -h"], capture_output=True).stdout.decode()
+		qube_free = run(["/usr/bin/qvm-run", "--pass-io", qube, "free"], capture_output=True).stdout.decode(encoding="ascii", errors="replace").split("\n")
+		qube_free_h = run(["/usr/bin/qvm-run", "--pass-io", qube, "free -h"], capture_output=True).stdout.decode(encoding="ascii", errors="replace")
 		qube_ram = split(qube_free[1], " ")
 		qube_swap = split(qube_free[2], " ")
 
