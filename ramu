@@ -4,19 +4,6 @@ from copy import deepcopy
 from string import printable
 
 """
-ramu
-A Qubes memory reporting tool to get an accurate assessment of free memory
-
-This script reports the total memory allocated to running guests, as well as free memory. It does not report the total memory available to the system.
-
-Guests without `qubes-core-agent` will not report any memory usage. Specifically, this script relies on `qvm-run` to query memory usage information.
-Guests without `qubes-core-agent` will be treated by this script as using no memory and having no memory allocated to them.
-
-Note:
-	This script blindly trusts the memory reporting of each qube. Any qube can lie about its memory usage.
-
-"""
-"""
                total        used        free      shared  buff/cache   available
 Mem:         1051608      244748      346172        2576      460688      648784
 Swap:        1048572         512     1048060
@@ -60,23 +47,16 @@ def main():
 			continue
 		qube_free = run(["/usr/bin/qvm-run", "--pass-io", qube, "free"], capture_output=True).stdout.decode(encoding="ascii", errors="replace").split("\n")
 		qube_free_h = run(["/usr/bin/qvm-run", "--pass-io", qube, "free -h"], capture_output=True).stdout.decode(encoding="ascii", errors="replace")
+		qube_ram = split(qube_free[1], " ")
+		qube_swap = split(qube_free[2], " ")
 
-		qube_ram = None
-		qube_swap = None
+		mem["ram"]["total"] += int(qube_ram[1])
+		mem["ram"]["used"] += int(qube_ram[2])
+		mem["ram"]["free"] += int(qube_ram[3])
 
-		if len(qube_free) > 1:
-			qube_ram = split(qube_free[1], " ")
-			if len(qube_free) > 2:
-				qube_swap = split(qube_free[2], " ")
-
-		if qube_ram != None:
-			mem["ram"]["total"] += int(qube_ram[1])
-			mem["ram"]["used"] += int(qube_ram[2])
-			mem["ram"]["free"] += int(qube_ram[3])
-		if qube_swap != None:
-			mem["swap"]["total"] += int(qube_swap[1])
-			mem["swap"]["used"] += int(qube_swap[2])
-			mem["swap"]["free"] += int(qube_swap[3])
+		mem["swap"]["total"] += int(qube_swap[1])
+		mem["swap"]["used"] += int(qube_swap[2])
+		mem["swap"]["free"] += int(qube_swap[3])
 
 		print(qube)
 		print(clean_str(qube_free_h))
